@@ -12,7 +12,8 @@ library(readr)
 library(dplyr)
 library(ggplot2)   
 library(psych)  
-
+library(broom)
+library(tibble)
 
 # ============================================================
 # 1. Exploración inicial de los datos
@@ -28,6 +29,7 @@ head(opry)
 
 #b) Resumen estadístico de variables clave
 summary(opry %>% select(Ventas, Gasto_Publicidad, Ordenes, Google_Trends_Opry))
+
 
 #c) Gráfico de dispersión: Ventas vs. Gasto en publicidad
 
@@ -59,6 +61,24 @@ ggplot(opry, aes(x = Date)) +
 mod_naive <- lm(Ventas ~ Gasto_Publicidad, data = opry)
 summary(mod_naive)
 
+
+# TABLA 2 (coeficientes modelo naive)
+tabla_coef_naive <- tidy(mod_naive) %>% 
+  mutate(across(estimate:p.value, ~round(.x, 6)))
+tabla_coef_naive
+
+
+# TABLA 2b (métricas globales modelo naive)
+tabla_glance_naive <- glance(mod_naive) %>% 
+  transmute(Modelo = "Naive",
+            r.squared = round(r.squared, 4),
+            adj.r.squared = round(adj.r.squared, 4),
+            sigma = round(sigma, 1),   # ~ RMSE
+            AIC = round(AIC, 1),
+            BIC = round(BIC, 1),
+            p.value = signif(p.value, 3))
+tabla_glance_naive
+
 ggplot(opry, aes(x = Gasto_Publicidad, y = Ventas)) +
   geom_point(color = "blue", alpha = 0.6) +
   geom_smooth(method = "lm", se = TRUE, color = "red") +
@@ -83,8 +103,20 @@ opry <- opry %>%
 
 summary(mod_season)
 
+# TABLA 3a (coeficientes modelo con estacionalidad)
+tabla_coef_season <- tidy(mod_season) %>% 
+  mutate(across(estimate:p.value, ~round(.x, 6)))
+tabla_coef_season
 
 
-
-
+# TABLA 3b (métricas globales modelo con estacionalidad)
+tabla_glance_season <- glance(mod_season) %>% 
+  transmute(Modelo = "Naive + Estacionalidad",
+            r.squared = round(r.squared, 4),
+            adj.r.squared = round(adj.r.squared, 4),
+            sigma = round(sigma, 1),   # ~ RMSE
+            AIC = round(AIC, 1),
+            BIC = round(BIC, 1),
+            p.value = signif(p.value, 3))
+tabla_glance_season
 
