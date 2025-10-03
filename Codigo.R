@@ -120,3 +120,33 @@ tabla_glance_season <- glance(mod_season) %>%
             p.value = signif(p.value, 3))
 tabla_glance_season
 
+# ============================================================
+# 4. Transformación logarítmica
+# ============================================================
+
+# a) Crear la variable logarítmica
+opry <- opry %>%
+  mutate(Log_Ventas = log(Ventas))
+
+# b) Estimar el modelo con la variable logarítmica como dependiente
+mod_log <- lm(Log_Ventas ~ Gasto_Publicidad + Holliday_seasson, data = opry)
+
+# c) Resumen del modelo
+summary(mod_log)
+
+# d) Tablas de coeficientes y métricas globales
+tabla_coef_log <- broom::tidy(mod_log) %>%
+  mutate(across(estimate:p.value, ~round(.x, 6)))
+tabla_coef_log
+
+tabla_glance_log <- broom::glance(mod_log) %>%
+  transmute(Modelo = "Log(Ventas) ~ Gasto_Publicidad + Holliday_seasson",
+            r.squared = round(r.squared, 4),
+            adj.r.squared = round(adj.r.squared, 4),
+            sigma = round(sigma, 4),   
+            AIC = round(AIC, 1),
+            BIC = round(BIC, 1),
+            p.value = signif(p.value, 3))
+tabla_glance_log
+
+
