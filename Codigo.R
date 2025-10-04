@@ -7,20 +7,32 @@
 # ============================================================
 # 0. Preparación
 # ============================================================
+install.packages("readr")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("psych")
+install.packages("broom")
+install.packages("tibble")
+install.packages("officer")
+install.packages("flextable")
+install.packages("gridExtra")
 
+library(gridExtra)
 library(readr)
 library(dplyr)
 library(ggplot2)   
 library(psych)  
 library(broom)
 library(tibble)
+library(officer)
+library(flextable)
 
 # ============================================================
 # 1. Exploración inicial de los datos
 # ============================================================
 
 #a) Importar la base de datos
-opry <- read_csv("C:/Users/User/OneDrive/Documentos/yop/universidad/Semestre 5/analitica/Caso 2/Caso3_ToursMarketing/Opry_data.csv")
+opry <- read_csv("Opry_data.csv")
 
 #opry <- read_csv(file.choose("Opry_data.csv"))
 
@@ -149,4 +161,151 @@ tabla_glance_log <- broom::glance(mod_log) %>%
             p.value = signif(p.value, 3))
 tabla_glance_log
 
+# ============================================================
+# 5. Modelo con Retail_sales__total y CPI
+# ============================================================
 
+# Modelo con Retail_sales_total como variable adicional
+mod_final <- lm(Log_Ventas ~ Gasto_Publicidad + Holliday_seasson + 
+                	Retail_sales__total + cpi, data = opry)
+
+# Resumen del modelo
+summary(mod_final)
+
+# Tabla de coeficientes
+tabla_coef_final <- tidy(mod_final) %>%
+  mutate(across(estimate:p.value, ~round(.x, 6)))
+tabla_coef_final
+
+# Tabla de métricas globales del modelo final
+tabla_glance_final <- glance(mod_final) %>% 
+  transmute(Modelo = "Modelo Final (Log + Retail + CPI)",
+            r.squared = round(r.squared, 4),
+            adj.r.squared = round(adj.r.squared, 4),
+            sigma = round(sigma, 4),   # RMSE (en log)
+            AIC = round(AIC, 1),
+            BIC = round(BIC, 1),
+            p.value = signif(p.value, 3))
+tabla_glance_final
+
+# Gráfico del modelo final con múltiples paneles
+# Crear gráficos individuales
+p1 <- ggplot(opry, aes(x = Gasto_Publicidad, y = Log_Ventas)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Log(Ventas) vs. Gasto Publicidad",
+       x = "Gasto en Publicidad",
+       y = "Log(Ventas)") +
+  theme_minimal()
+
+p2 <- ggplot(opry, aes(x = as.factor(Holliday_seasson), y = Log_Ventas)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Log(Ventas) vs. Temporada",
+       x = "Temporada Alta (1) vs. Normal (0)",
+       y = "Log(Ventas)") +
+  theme_minimal()
+
+p3 <- ggplot(opry, aes(x = Retail_sales__total, y = Log_Ventas)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Log(Ventas) vs. Retail Sales",
+       x = "Ventas Minoristas Totales",
+       y = "Log(Ventas)") +
+  theme_minimal()
+
+p4 <- ggplot(opry, aes(x = cpi, y = Log_Ventas)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Log(Ventas) vs. CPI",
+       x = "Índice de Precios al Consumidor",
+       y = "Log(Ventas)") +
+  theme_minimal()
+
+# Combinar los gráficos en un panel
+panel_final <- grid.arrange(p1, p2, p3, p4, ncol = 2,
+                          top = "Relaciones entre Log(Ventas) y Variables Predictoras")
+
+# Guardar el panel de gráficos
+ggsave("modelo_final_panel.png", 
+       plot = panel_final,
+       width = 7, 
+       height = 6)
+
+# ============================================================
+# 6. Exportación de resultados
+# ============================================================
+
+# Crear tabla de coeficientes con formato
+tabla_resultados <- tidy(mod_final) %>%
+  mutate(
+    significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    ),
+    estimate = round(estimate, 4),
+    std.error = round(std.error, 4),
+    statistic = round(statistic, 4),
+    p.value = round(p.value, 4)
+  ) %>%
+  rename(
+    "Variable" = term,
+    "Coeficiente" = estimate,
+    "Error Est." = std.error,
+    "Estadístico t" = statistic,
+    "P-valor" = p.value,
+    "Significancia" = significance
+  )
+
+# Crear tabla de métricas globales
+metricas_globales <- glance(mod_final) %>%
+  select(r.squared, adj.r.squared, sigma, AIC) %>%
+  round(4)
+
+# Crear documento Word
+doc <- read_docx()
+
+# Agregar título
+doc <- doc %>%
+  body_add_par("Resultados del Modelo de Regresión con Retail Sales y CPI", style = "heading 1") %>%
+  body_add_par("", style = "Normal")
+
+# Agregar tabla de coeficientes
+doc <- doc %>%
+  body_add_par("Tabla 1: Coeficientes del modelo", style = "heading 2") %>%
+  body_add_flextable(
+    flextable(tabla_resultados) %>%
+      theme_vanilla() %>%
+      autofit()
+  )
+
+# Agregar nota al pie
+doc <- doc %>%
+  body_add_par("Niveles de significancia: *** p<0.001, ** p<0.01, * p<0.05", style = "Normal") %>%
+  body_add_par("", style = "Normal")
+
+# Agregar métricas globales
+doc <- doc %>%
+  body_add_par("Tabla 2: Métricas globales del modelo", style = "heading 2") %>%
+  body_add_flextable(
+    flextable(metricas_globales) %>%
+      theme_vanilla() %>%
+      autofit()
+  )
+
+# Agregar gráfico al documento Word
+doc <- doc %>%
+  body_add_par("Gráfico 1: Relaciones del Modelo Final", style = "heading 2") %>%
+  body_add_img("modelo_final_panel.png", 
+               width = 7, 
+               height = 6)
+
+# Guardar el gráfico
+ggsave("modelo_grafico.png", 
+       plot = last_plot(), 
+       width = 7, 
+       height = 6)
+
+# Guardar documento
+print(doc, target = "Resultados_Modelo_Retail_Sales_CPI.docx")
