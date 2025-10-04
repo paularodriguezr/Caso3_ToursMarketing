@@ -257,12 +257,6 @@ tabla_resultados <- tidy(mod_final) %>%
     "P-valor" = p.value,
     "Significancia" = significance
   )
-
-# Crear tabla de métricas globales
-metricas_globales <- glance(mod_final) %>%
-  select(r.squared, adj.r.squared, sigma, AIC,p.value) %>%
-  round(4)
-
 # Crear documento Word
 doc <- read_docx()
 
