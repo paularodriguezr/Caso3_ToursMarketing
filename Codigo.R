@@ -178,14 +178,14 @@ tabla_coef_final <- tidy(mod_final) %>%
 tabla_coef_final
 
 # Tabla de métricas globales del modelo final
-tabla_glance_final <- glance(mod_final) %>% 
-  transmute(Modelo = "Modelo Final (Log + Retail + CPI)",
-            r.squared = round(r.squared, 4),
-            adj.r.squared = round(adj.r.squared, 4),
-            sigma = round(sigma, 4),   # RMSE (en log)
-            AIC = round(AIC, 1),
-            BIC = round(BIC, 1),
-            p.value = signif(p.value, 3))
+tabla_glance_final <- glance(mod_final) %>%
+transmute(Modelo = "Modelo Final (Log + Retail + CPI)",
+r.squared = round(r.squared, 4),
+adj.r.squared = round(adj.r.squared, 4),
+sigma = round(sigma, 4), # RMSE (en log)
+AIC = round(AIC, 1),
+BIC = round(BIC, 1),
+p.value = signif(p.value, 3))
 tabla_glance_final
 
 # Gráfico del modelo final con múltiples paneles
@@ -244,7 +244,7 @@ tabla_resultados <- tidy(mod_final) %>%
       p.value < 0.05 ~ "*",
       TRUE ~ ""
     ),
-    estimate = round(estimate, 4),
+    estimate = round(estimate, 6),
     std.error = round(std.error, 4),
     statistic = round(statistic, 4),
     p.value = round(p.value, 4)
@@ -260,7 +260,7 @@ tabla_resultados <- tidy(mod_final) %>%
 
 # Crear tabla de métricas globales
 metricas_globales <- glance(mod_final) %>%
-  select(r.squared, adj.r.squared, sigma, AIC) %>%
+  select(r.squared, adj.r.squared, sigma, AIC,p.value) %>%
   round(4)
 
 # Crear documento Word
@@ -289,7 +289,7 @@ doc <- doc %>%
 doc <- doc %>%
   body_add_par("Tabla 2: Métricas globales del modelo", style = "heading 2") %>%
   body_add_flextable(
-    flextable(metricas_globales) %>%
+    flextable(tabla_glance_final) %>%
       theme_vanilla() %>%
       autofit()
   )
@@ -300,12 +300,6 @@ doc <- doc %>%
   body_add_img("modelo_final_panel.png", 
                width = 7, 
                height = 6)
-
-# Guardar el gráfico
-ggsave("modelo_grafico.png", 
-       plot = last_plot(), 
-       width = 7, 
-       height = 6)
 
 # Guardar documento
 print(doc, target = "Resultados_Modelo_Retail_Sales_CPI.docx")
